@@ -79,3 +79,6 @@ coverage.xml
 # Arquivos invisíveis criados pelo Windows e macOS
 .DS_Store
 Thumbs.db
+
+
+*.png
