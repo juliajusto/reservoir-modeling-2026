@@ -47,7 +47,6 @@ plt.title('Perfis de Pressão em Diferentes Tempos')
 plt.legend()
 plt.grid()
 
-plt.savefig('perfis_pressao_radial.png', dpi=150)
 plt.show()
 
 #Gráfico 2 - Superfície 3D da pressão
@@ -78,5 +77,4 @@ fig.colorbar(surf, shrink=0.5, aspect=10)
 
 ax.view_init(30, 30)
 
-plt.savefig('superficie_pressao_radial.png', dpi=150)
 plt.show()
