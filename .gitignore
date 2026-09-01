@@ -1,0 +1,81 @@
+# ==============================================================================
+# DOCUMENTAÇÃO OFICIAL DO GITIGNORE PARA PYTHON
+# ==============================================================================
+
+# --- Ambientes Virtuais (Virtual Environments) ---
+# Ignora pastas de dependências locais para não subir gigabytes de código ao GitHub
+.venv/
+venv/
+ENV/
+env/
+Active4j-boot/
+bin/
+include/
+lib/
+share/
+
+# --- Cache do Python ---
+# Arquivos compilados pelo Python para acelerar a execução
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Distribuição e Empacotamento ---
+# Arquivos gerados ao criar pacotes (pip install / setup.py)
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Variáveis de Ambiente e Segredos ---
+# NUNCA suba senhas, chaves de API ou tokens de acesso
+.env
+.ini
+*.env
+secret_settings.py
+secrets.*
+
+# --- Testes e Cobertura de Código ---
+# Arquivos gerados por frameworks de teste como pytest e unittest
+htmlcov/
+.tox/
+.nosexy/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Configurações de IDEs e Editores ---
+# Arquivos específicos do seu editor de código (opcional, mas recomendado)
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+
+# --- Sistema Operacional ---
+# Arquivos invisíveis criados pelo Windows e macOS
+.DS_Store
+Thumbs.db
