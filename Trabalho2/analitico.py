@@ -1,37 +1,40 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.special import erfc
 
 from dados import case_data, physical_data, numerical_data
 
 
-# ============================================================
-# Cálculo da difusividade hidráulica
-# ============================================================
-
+# Propriedades
 mu = physical_data["mu"]
 ct = physical_data["ct"]
 k = physical_data["k"]
 phi = physical_data["phi"]
+L = physical_data["L"]
+A = physical_data["A"]
 
+# Dados
+Po = case_data["Po"]
+pe = case_data["pe"]
+pw = case_data["pw"]
+qo = case_data["qo"]
+Bo = case_data["Bo"]
+
+tipo_contorno = case_data["boundary_type"]
+
+N = numerical_data["N_fourier"]
+
+# Cálculo da difusividade
 eta = k / (phi * mu * ct)
 
 
 # ============================================================
-# Função inicial
+# PRESSÃO PRESCRITA
 # ============================================================
 
 def f(x):
+    return (pe - pw) * (1 - x / L)
 
-    pe = case_data["pe"]
-    pw = case_data["pw"]
-    L = physical_data["L"]
-
-    return (pe - pw) * (1 - (x / L))
-
-
-# ============================================================
-# Coeficientes da Série de Fourier
-# ============================================================
 
 def fourier(f, L, N):
 
@@ -46,25 +49,15 @@ def fourier(f, L, N):
             * np.sin(n * np.pi * x_integracao / L)
         )
 
-        Bn[n] = (
-            2 / L
-            * np.trapezoid(integrando, x_integracao)
+        Bn[n] = 2 / L * np.trapezoid(
+            integrando,
+            x_integracao
         )
 
     return Bn
 
 
-# ============================================================
-# Solução Analítica
-# ============================================================
-
-def pressao(x, t):
-
-    L = physical_data["L"]
-    N = numerical_data["N_fourier"]
-
-    pw = case_data["pw"]
-    pe = case_data["pe"]
+def pressao_prescrita(x, t):
 
     transiente = np.zeros_like(x)
 
@@ -77,48 +70,84 @@ def pressao(x, t):
             * np.sin(n * np.pi * x / L)
             * np.exp(
                 -(n * np.pi / L)**2
-                * eta
-                * t
+                * eta * t
             )
         )
 
     permanente = pw + (pe - pw) * (x / L)
 
-    pressao_total = permanente + transiente
-
-    return pressao_total
+    return permanente + transiente
 
 
 # ============================================================
-# Gráficos da solução analítica
+# VAZÃO PRESCRITA
 # ============================================================
 
-L = physical_data["L"]
-tempo_horas_total = case_data["tempo_horas"]
+def pressao_vazao(x, t):
+
+    q = qo * Bo / 86400
+
+    pressao = (
+        Po
+        - (q * mu * L) / (k * A)
+        * (
+            np.sqrt(
+                (4 * eta * t) / (np.pi * L**2)
+            )
+            * np.exp(
+                -x**2 / (4 * eta * t)
+            )
+            - (x / L)
+            * erfc(
+                x / np.sqrt(4 * eta * t)
+            )
+        )
+    )
+
+    return pressao / 1e5
+
+
+# ============================================================
+# SOLUÇÃO
+# ============================================================
+
+def pressao(x, t):
+
+    if tipo_contorno == "pressure":
+        return pressao_prescrita(x, t)
+
+    elif tipo_contorno == "flow":
+        return pressao_vazao(x, t)
+
+
+# ============================================================
+# GRÁFICOS
+# ============================================================
 
 x = np.linspace(0, L, 100)
 
+tempo_horas = case_data["tempo_horas"]
+
 t = np.linspace(
     0,
-    tempo_horas_total * 3600,
+    tempo_horas * 3600,
     1000
 )
 
 X, T = np.meshgrid(x, t)
 
-Pressao = pressao(X, T)
+Pressao = np.zeros_like(X)
+
+for i in range(len(t)):
+
+    Pressao[i, :] = pressao(x, t[i])
 
 
-# ============================================================
-# Gráfico 1 - Solução Analítica 3D
-# ============================================================
+# Gráfico 3D
 
 fig = plt.figure(figsize=(10, 10))
 
-ax = fig.add_subplot(
-    111,
-    projection="3d"
-)
+ax = fig.add_subplot(111, projection="3d")
 
 surf = ax.plot_surface(
     X,
@@ -127,17 +156,14 @@ surf = ax.plot_surface(
     rstride=2,
     cstride=1,
     cmap=plt.cm.viridis,
-    linewidth=0.2,
-    alpha=1
+    linewidth=0.2
 )
 
 ax.set_xlabel("x (m)")
 ax.set_ylabel("t (segundos)")
-ax.set_zlabel("Pressão(x,t) (bar)")
+ax.set_zlabel("Pressão (bar)")
 
-plt.title(
-    "Solução Analítica 1D da Equação da Difusividade Hidráulica"
-)
+plt.title("Solução Analítica")
 
 fig.colorbar(
     surf,
@@ -145,20 +171,16 @@ fig.colorbar(
     aspect=10
 )
 
-ax.view_init(30, 30)
 
-
-# ============================================================
-# Gráfico 2 - Perfis de Pressão
-# ============================================================
+# Perfis de pressão
 
 plt.figure(figsize=(10, 6))
 
 tempos_horas = [1, 6, 12, 24]
 
-for tempo_horas in tempos_horas:
+for tempo_hora in tempos_horas:
 
-    tempo_segundos = tempo_horas * 3600
+    tempo_segundos = tempo_hora * 3600
 
     P = pressao(
         x,
@@ -168,16 +190,12 @@ for tempo_horas in tempos_horas:
     plt.plot(
         x,
         P,
-        label=f"{tempo_horas} horas"
+        label=f"{tempo_hora} horas"
     )
 
 plt.xlabel("x (m)")
 plt.ylabel("Pressão (bar)")
-
-plt.title(
-    "Perfis de Pressão em Diferentes Tempos"
-)
-
+plt.title("Perfis de Pressão - Solução Analítica")
 plt.legend()
 plt.grid()
 
