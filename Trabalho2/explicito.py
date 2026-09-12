@@ -37,6 +37,12 @@ beta = eta * dt / dx**2
 # Escolha da condição de contorno
 tipo_contorno = case_data["boundary_type"]
 
+# Nome legível da condição de contorno (usado nos títulos dos gráficos)
+if tipo_contorno == "pressure":
+    nome_contorno = "Pressão Prescrita"
+elif tipo_contorno == "flow":
+    nome_contorno = "Vazão Prescrita"
+
 
 # Análise de estabilidade e convergência
 if dt <= (dx**2) / (4 * eta):
@@ -141,7 +147,7 @@ ax.set_xlabel('x (m)')
 ax.set_ylabel('t (segundos)')
 ax.set_zlabel('P(x,t) (bar)')
 
-plt.title('Método Explícito')
+plt.title(f'Método Explícito - {nome_contorno}')
 
 fig.colorbar(
     surf,
@@ -176,7 +182,7 @@ for tempo_hora in tempos_horas:
 plt.xlabel('x (m)')
 plt.ylabel('Pressão (bar)')
 plt.title(
-    'Perfis de Pressão em Diferentes Tempos - Método Explícito'
+    f'Perfis de Pressão em Diferentes Tempos - Método Explícito - {nome_contorno}'
 )
 
 plt.legend()
