@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 from dados import case_data, physical_data, numerical_data
 
@@ -48,6 +49,34 @@ P = np.zeros((nt + 1, nx))
 for i in range(nx):
     P[0, i] = Po
 
+def TDMA(T_matriz, D):
+    a = np.diagonal(T_matriz, offset=-1)
+    b = np.diagonal(T_matriz, offset=0)
+    c = np.diagonal(T_matriz, offset=+1)
+    d = D
+
+    n = len(d)
+    c_ = np.zeros(n-1)
+    d_ = np.zeros(n)
+    x = np.zeros(n)
+
+    # eliminação forward
+    c_[0] = c[0] / b[0]
+    d_[0] = d[0] / b[0]
+    for i in range(1, n-1):
+        c_[i] = c[i] / (b[i] - a[i-1] * c_[i-1])
+    for i in range(1, n):
+        d_[i] = (d[i] - a[i-1] * d_[i-1]) / (b[i] - a[i-1] * c_[i-1])
+
+    # substituição backward
+    x[-1] = d_[-1]
+    for i in range(n-2, -1, -1):
+        x[i] = d_[i] - c_[i] * x[i+1]
+
+    return x
+
+inicio = time.time()
+
 # Equação discretizada (totalmente implícito)
 for n in range(nt):
     A_matriz = np.zeros((nx, nx))
@@ -79,8 +108,11 @@ for n in range(nt):
         A_matriz[-1,-2] = -4/3 * beta
         b[-1] = P[n,-1] + 8/3 * beta * Po
 
-    P[n+1, :] = np.linalg.solve(A_matriz, b)
+    P[n+1, :] = TDMA(A_matriz, b)
 
+fim = time.time()
+tempo_execucao = fim - inicio
+print(f"Tempo de execução (Implícito): {tempo_execucao:.4f} segundos")
 
 # Plotagem
 

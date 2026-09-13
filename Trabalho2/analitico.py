@@ -85,11 +85,13 @@ def pressao_prescrita(x, t):
 
 def pressao_vazao(x, t):
 
+    if t == 0:
+        return np.full_like(x, float(Po))
+
     q = qo * Bo / 86400
 
-    pressao = (
-        Po
-        - (q * mu * L) / (k * A)
+    delta_p_pa = (
+        (q * mu * L) / (k * A)
         * (
             np.sqrt(
                 (4 * eta * t) / (np.pi * L**2)
@@ -104,13 +106,11 @@ def pressao_vazao(x, t):
         )
     )
 
-    return pressao / 1e5
+    # delta_p_pa está em Pascal; convertendo para bar
+    return Po - delta_p_pa / 1e5
 
 
-# ============================================================
-# SOLUÇÃO
-# ============================================================
-
+# solução
 def pressao(x, t):
 
     if tipo_contorno == "pressure":
@@ -118,11 +118,7 @@ def pressao(x, t):
 
     elif tipo_contorno == "flow":
         return pressao_vazao(x, t)
-
-
-# ============================================================
-# GRÁFICOS
-# ============================================================
+#inicio dos graficos
 
 x = np.linspace(0, L, 100)
 
@@ -170,6 +166,7 @@ fig.colorbar(
     shrink=0.5,
     aspect=10
 )
+ax.view_init(30, 30)
 
 
 # Perfis de pressão

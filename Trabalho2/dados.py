@@ -18,7 +18,7 @@ case_data = {
     # Escolha da condição de contorno
     # "pressure" = pressão prescrita
     # "flow" = vazão prescrita
-    "boundary_type": "flow",
+    "boundary_type": "pressure",
 
     # Tempo total da simulação
     "tempo_horas": 24

@@ -41,10 +41,6 @@ erro_max_exp = np.max(erro_explicito)
 erro_medio_imp = np.mean(erro_implicito)
 erro_max_imp = np.max(erro_implicito)
 
-# ============================================================
-# FIGURA COM 2 PAINÉIS
-# ============================================================
-
 fig, (ax1, ax2) = plt.subplots(
     2, 1,
     figsize=(9, 8.5),
@@ -56,6 +52,10 @@ fig, (ax1, ax2) = plt.subplots(
 ax1.plot(x, P_explicito, label="Explícito", linewidth=2)
 ax1.plot(x, P_implicito, label="Implícito", linewidth=2)
 ax1.plot(x, P_analitico, '--', label="Analítico", linewidth=2, color='black')
+
+# Linha de referência em P=0 (útil no caso de vazão, onde a pressão pode ficar negativa)
+if tipo_contorno == "flow":
+    ax1.axhline(0, color='gray', linestyle=':', linewidth=1, alpha=0.6)
 
 ax1.set_ylabel("Pressão (bar)")
 ax1.set_title(f"Comparação dos Métodos - {titulo}")
@@ -71,7 +71,7 @@ ax2.set_ylabel("Erro absoluto (bar)")
 ax2.legend()
 ax2.grid(True, alpha=0.3)
 
-# tentando colocar o texto de erro médio e máximo abaixo do gráfico, mas dentro da figura
+# Texto de erro médio e máximo abaixo dos gráficos, dentro da figura
 texto_erro = (
     f"Erro médio (Explícito): {erro_medio_exp:.4f} bar   |   "
     f"Erro máximo (Explícito): {erro_max_exp:.4f} bar\n"
@@ -89,8 +89,9 @@ fig.text(
 plt.tight_layout(rect=[0, 0.07, 1, 1])  # reserva espaço embaixo para o texto
 plt.savefig(nome_arquivo, dpi=150)
 plt.show()
+plt.close(fig)
 
-# Prints no terminal (mantidos para conferência rápida / registro no artigo)
+
 print(f"=== Caso: {tipo_contorno} ===")
 print(f"Erro médio  (Explícito): {erro_medio_exp:.4f} bar")
 print(f"Erro máximo (Explícito): {erro_max_exp:.4f} bar")

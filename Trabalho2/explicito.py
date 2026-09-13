@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 from dados import case_data, physical_data, numerical_data
 
@@ -59,7 +60,7 @@ P = np.zeros((nt + 1, nx))
 for i in range(nx):
     P[0, i] = Po
 
-
+inicio = time.time()
 # Equação discretizada
 for n in range(nt):
 
@@ -116,6 +117,9 @@ for n in range(nt):
                     + beta * P[n, i+1]
                 )
 
+fim = time.time()
+tempo_execucao = fim - inicio
+print(f"Tempo de execução (Explícito): {tempo_execucao:.4f} segundos")
 
 # Plotagem
 
