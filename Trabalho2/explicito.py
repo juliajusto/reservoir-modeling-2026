@@ -1,8 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from pathlib import Path
 
 from dados import case_data, physical_data, numerical_data
+
+PASTA_PLOTS = Path(__file__).parent / "plots" / "explicito"
+PASTA_PLOTS.mkdir(parents=True, exist_ok=True)
 
 
 # Propriedades
@@ -161,6 +165,11 @@ fig.colorbar(
 
 ax.view_init(30, 30)
 
+plt.savefig(
+    PASTA_PLOTS / f"explicito3d_{tipo_contorno}.png",
+    dpi=150,
+    bbox_inches="tight")
+
 
 # Gráfico 2
 plt.figure(figsize=(10, 6))
@@ -191,5 +200,10 @@ plt.title(
 
 plt.legend()
 plt.grid()
+ax.view_init(30, 30)
+plt.savefig(
+    PASTA_PLOTS / f"explicito_{tipo_contorno}.png",
+    dpi=150,
+    bbox_inches="tight")
 
 plt.show()

@@ -1,9 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import erfc
+from pathlib import Path 
 
 from dados import case_data, physical_data, numerical_data
 
+PASTA_PLOTS = Path(__file__).parent / "plots" / "analitico"
+PASTA_PLOTS.mkdir(parents=True, exist_ok=True)
 
 # Propriedades
 mu = physical_data["mu"]
@@ -172,6 +175,10 @@ fig.colorbar(
     aspect=10
 )
 ax.view_init(30, 30)
+plt.savefig(
+    PASTA_PLOTS / f"analitico3d_{tipo_contorno}.png",
+    dpi=150,
+    bbox_inches="tight")
 
 
 # Perfis de pressão
@@ -200,5 +207,10 @@ plt.ylabel("Pressão (bar)")
 plt.title(f"Perfis de Pressão - Solução Analítica - {nome_contorno}")
 plt.legend()
 plt.grid()
+ax.view_init(30, 30)
+plt.savefig(
+    PASTA_PLOTS / f"analitico_{tipo_contorno}.png",
+    dpi=150,
+    bbox_inches="tight")
 
 plt.show()

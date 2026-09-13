@@ -1,11 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 
 from dados import case_data, physical_data, numerical_data
 from analitico import pressao_prescrita, pressao_vazao
 
 import explicito
 import implicito
+
+PASTA_PLOTS = Path(__file__).parent / "plots" / "comparacao"
+PASTA_PLOTS.mkdir(parents=True, exist_ok=True)
 
 L = physical_data["L"]
 nx = numerical_data["nx"]
@@ -92,7 +96,7 @@ fig.text(
 )
 
 plt.tight_layout(rect=[0, 0.07, 1, 1])  # reserva espaço embaixo para o texto
-plt.savefig(nome_arquivo, dpi=150)
+plt.savefig(PASTA_PLOTS / nome_arquivo, dpi=150)
 plt.show()
 plt.close(fig)
 

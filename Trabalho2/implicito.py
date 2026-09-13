@@ -1,8 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from pathlib import Path
 
 from dados import case_data, physical_data, numerical_data
+
+PASTA_PLOTS = Path(__file__).parent / "plots" / "implicito"
+PASTA_PLOTS.mkdir(parents=True, exist_ok=True)
 
 # Propriedades
 mu = physical_data["mu"]
@@ -153,6 +157,10 @@ fig.colorbar(
 )
 
 ax.view_init(30, 30)
+plt.savefig(
+    PASTA_PLOTS / f"implicito3d_{tipo_contorno}.png",
+    dpi=150,
+    bbox_inches="tight")
 
 
 # Gráfico 2
@@ -184,5 +192,10 @@ plt.title(
 
 plt.legend()
 plt.grid()
+ax.view_init(30, 30)
+plt.savefig(
+    PASTA_PLOTS / f"implicito_{tipo_contorno}.png",
+    dpi=150,
+    bbox_inches="tight")
 
 plt.show()
