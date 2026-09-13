@@ -49,9 +49,12 @@ fig, (ax1, ax2) = plt.subplots(
 )
 
 # --- Painel 1: perfis de pressão ---
-ax1.plot(x, P_explicito, label="Explícito", linewidth=2)
-ax1.plot(x, P_implicito, label="Implícito", linewidth=2)
-ax1.plot(x, P_analitico, '--', label="Analítico", linewidth=2, color='black')
+ax1.plot(x, P_explicito, label="Explícito",
+         linewidth=4.5, color="tab:blue", alpha=0.85, zorder=1)
+ax1.plot(x, P_implicito, label="Implícito",
+         linewidth=1.8, color="tab:orange", linestyle=(0, (6, 4)), zorder=2)
+ax1.plot(x, P_analitico, label="Analítico",
+         linewidth=1.5, color="black", linestyle=":", zorder=3)
 
 # Linha de referência em P=0 (útil no caso de vazão, onde a pressão pode ficar negativa)
 if tipo_contorno == "flow":
@@ -63,8 +66,10 @@ ax1.legend()
 ax1.grid(True, alpha=0.3)
 
 # --- Painel 2: erro absoluto ao longo de x ---
-ax2.plot(x, erro_explicito, label="Erro Explícito", linewidth=1.5)
-ax2.plot(x, erro_implicito, label="Erro Implícito", linewidth=1.5)
+ax2.plot(x, erro_explicito, label="Erro Explícito",
+         linewidth=4.5, color="tab:blue", alpha=0.85, zorder=1)
+ax2.plot(x, erro_implicito, label="Erro Implícito",
+         linewidth=1.8, color="tab:orange", linestyle=(0, (6, 4)), zorder=2)
 
 ax2.set_xlabel("x (m)")
 ax2.set_ylabel("Erro absoluto (bar)")

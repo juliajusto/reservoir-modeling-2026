@@ -22,6 +22,11 @@ Bo = case_data["Bo"]
 
 tipo_contorno = case_data["boundary_type"]
 
+if tipo_contorno == "pressure":
+    nome_contorno = "Pressão Prescrita"
+elif tipo_contorno == "flow":
+    nome_contorno = "Vazão Prescrita"
+
 N = numerical_data["N_fourier"]
 
 # Cálculo da difusividade
@@ -159,7 +164,7 @@ ax.set_xlabel("x (m)")
 ax.set_ylabel("t (segundos)")
 ax.set_zlabel("Pressão (bar)")
 
-plt.title("Solução Analítica")
+plt.title(f"Solução Analítica - {nome_contorno}")
 
 fig.colorbar(
     surf,
@@ -192,7 +197,7 @@ for tempo_hora in tempos_horas:
 
 plt.xlabel("x (m)")
 plt.ylabel("Pressão (bar)")
-plt.title("Perfis de Pressão - Solução Analítica")
+plt.title(f"Perfis de Pressão - Solução Analítica - {nome_contorno}")
 plt.legend()
 plt.grid()
 
