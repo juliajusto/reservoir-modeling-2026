@@ -78,12 +78,12 @@ fault_data = {
 
 well_data = {
 
-    'i': numerical_data['ny'] - 1,  # Índice da linha do poço
-    'j': numerical_data['nx'] - 1,  # Índice da coluna do poço
+    'i': numerical_data['ny'] //  2,  # Índice da linha do poço
+    'j': numerical_data['nx'] // 2,  # Índice da coluna do poço
 
     'i_inj': 0,  # Índice da linha do poço injetor
     'j_inj': 0,   # Índice da coluna do poço injetor
     'q_inj': 35, # Vazão de injeção [m³ std/dia]
-    'injetor_ativo': True
+    'injetor_ativo': False
 
 }

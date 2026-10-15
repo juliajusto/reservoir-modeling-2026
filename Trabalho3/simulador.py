@@ -418,6 +418,61 @@ while tempo_atual < tempo:
 
 fim = time.time()
 
+# Velocidade de Darcy nas faces em x
+ux = np.zeros((ny, nx - 1))
+
+for i in range(ny):
+    for j in range(nx - 1):
+        k_face = 2 * k[i,j] * k[i,j+1] / (k[i,j] + k[i,j+1])
+
+        ux[i,j] = -(k_face / mu) * (
+            P_new[i,j+1] - P_new[i,j]
+        ) / dx
+
+
+#velocidade de Darcy nas faces em y
+uy = np.zeros((ny - 1, nx))
+
+for i in range(ny - 1):
+    for j in range(nx):
+        k_face = 2 * k[i,j] * k[i+1,j] / (k[i,j] + k[i+1,j])
+
+        uy[i,j] = -(k_face / mu) * (
+            P_new[i+1,j] - P_new[i,j]
+        ) / dy
+
+
+# Falha selante: velocidade nula nas faces da falha
+if falha_ativa:
+    for i in range(inicio_falha, fim_falha + 1):
+        ux[i, coluna_falha] = 0
+
+
+# Velocidade em x no centro dos blocos
+ux_c = np.zeros((ny, nx))
+
+for i in range(ny):
+    for j in range(nx):
+        oeste = ux[i, j-1] if j > 0 else 0
+        leste = ux[i, j] if j < nx - 1 else 0
+
+        ux_c[i, j] = (oeste + leste) / 2
+
+
+# Velocidade em y no centro dos blocos
+uy_c = np.zeros((ny, nx))
+
+for i in range(ny):
+    for j in range(nx):
+        baixo = uy[i-1, j] if i > 0 else 0
+        cima = uy[i, j] if i < ny - 1 else 0
+
+        uy_c[i, j] = (baixo + cima) / 2
+
+
+# Módulo da velocidade
+u_mod = np.sqrt(ux_c**2 + uy_c**2)
+
 print(f"Tempo de execução: {fim - inicio:.2f} segundos")
 print(f"Pressão final no poço: {Pnew[m]/1e5:.2f} bar")
 print(f"Vazão final: {vazoes[-1]:.4f} m³ std/dia")
