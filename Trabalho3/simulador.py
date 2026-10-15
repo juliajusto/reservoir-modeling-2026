@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import time
 from pathlib import Path
 
-from dados import case_data, physical_data, numerical_data, fault_data
+from dados import case_data, physical_data, numerical_data, fault_data, well_data
 
 # Propriedades
 mu = physical_data["mu"]
@@ -20,6 +20,16 @@ tempo_horas = case_data["tempo_horas"]
 tempo = tempo_horas * 3600
 Po = case_data["Po"] * 1e5  # Pa
 pw = case_data["pw"] * 1e5  # Pa
+tempos_snapshot = case_data["tempos_snapshot"]
+
+# Dados do Injetor
+i_inj = well_data['i_inj']
+j_inj = well_data['j_inj']
+q_inj = well_data['q_inj']
+injetor_ativo = well_data['injetor_ativo']
+
+#Conversão da vazão de injeção para m³/s
+q_inj = well_data['q_inj'] * Bo / 86400  # m³/s
 
 # Parâmetros da malha
 nx = numerical_data["nx"]
@@ -41,7 +51,7 @@ eta = 1 / (phi * mu * ct)
 rx = dt / dx**2
 ry = dt / dy**2
 
-# Importa o campo de permeabilida
+# Importa o campo de permeabilidade
 k = np.loadtxt(
     Path(__file__).parent / numerical_data["arquivo_permeabilidade"],
     delimiter=','
@@ -50,8 +60,8 @@ k = np.loadtxt(
 # verifica dimensões
 assert k.shape == (ny, nx)
 # Condição inicial
-P_old = np.full((nx, ny), Po)
-P_new = np.full((nx, ny), Po)
+P_old = np.full((ny, nx), Po)
+P_new = np.full((ny, nx), Po)
 Pold = np.full(N, Po)
 
 # Paramêtros do método de Gauss-Seidel
@@ -62,6 +72,8 @@ max_iter = numerical_data["max_iter"]
 tempos = []
 vazoes = []
 producoes_acumuladas = []
+pressoes_snapshot = []
+horas_snapshot = []
 
 Np = 0 # Produção acumulada em m³ std
 
@@ -349,8 +361,8 @@ while tempo_atual < tempo:
     b[m] = Pold[m]
 
     # Poço produtos Central - Modelo de Peaceman
-    i = ny // 2
-    j = nx // 2
+    i = well_data['i']
+    j = well_data['j']
     m = i * nx + j
 
     # Permeabilidade
@@ -368,6 +380,11 @@ while tempo_atual < tempo:
     # Modificação na matriz e no vetor
     A[m,m] += Cw
     b[m] += Cw * pw
+
+    # Poço injetor - vazao prescrita
+    if injetor_ativo:
+        m_inj = i_inj * nx + j_inj
+        b[m_inj] += dt * q_inj / (phi * ct * dx * dy * h)
 
     # Resolução do sistema linear
     Pnew = Gauss_Seidel(A, b, Pold, tolerancia, max_iter)
@@ -390,6 +407,13 @@ while tempo_atual < tempo:
     # Atualização das pressões
     Pold = Pnew.copy()
     P_new = Pnew.reshape(ny, nx).copy()
+
+     # Salvar mapas de pressão nos tempos escolhidos
+    for hora in tempos_snapshot:
+        if passo == round(hora * 3600 / dt):
+            pressoes_snapshot.append(P_new.copy())
+            horas_snapshot.append(hora)
+
     P_old = P_new.copy()
 
 fim = time.time()
@@ -398,3 +422,4 @@ print(f"Tempo de execução: {fim - inicio:.2f} segundos")
 print(f"Pressão final no poço: {Pnew[m]/1e5:.2f} bar")
 print(f"Vazão final: {vazoes[-1]:.4f} m³ std/dia")
 print(f"Produção acumulada: {Np:.4f} m³ std")
+print(f"Snapshots salvos: {horas_snapshot}")

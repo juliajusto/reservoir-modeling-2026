@@ -13,7 +13,9 @@ case_data = {
     "Bo": 1.25,                 # Fator volume de formação [m³/m³ std]
 
     # Tempo total da simulação
-    "tempo_horas": 24
+    "tempo_horas": 720,                # Tempo total da simulação [h]
+
+    'tempos_snapshot': [72, 240, 480, 720]  # Tempos para snapshots [h]
 }
 
 
@@ -68,4 +70,20 @@ fault_data = {
     "coluna": 13,
     "inicio": 4,
     "fim": 16
+}
+
+# ============================================================
+# LOCALIZAÇÃO DO POÇO 
+# ============================================================
+
+well_data = {
+
+    'i': numerical_data['ny'] - 1,  # Índice da linha do poço
+    'j': numerical_data['nx'] - 1,  # Índice da coluna do poço
+
+    'i_inj': 0,  # Índice da linha do poço injetor
+    'j_inj': 0,   # Índice da coluna do poço injetor
+    'q_inj': 35, # Vazão de injeção [m³ std/dia]
+    'injetor_ativo': True
+
 }
