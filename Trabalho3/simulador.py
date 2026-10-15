@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import time
 from pathlib import Path
 
-from dados import case_data, physical_data, numerical_data, fault_data, well_data
+from dados import case_data, physical_data, numerical_data, fault_data, well_data, boundary_data
 
 # Propriedades
 mu = physical_data["mu"]
@@ -27,6 +27,22 @@ i_inj = well_data['i_inj']
 j_inj = well_data['j_inj']
 q_inj = well_data['q_inj']
 injetor_ativo = well_data['injetor_ativo']
+
+# Produtor ligado/desligado
+produtor_ativo = well_data['produtor_ativo']
+
+# Permeabilidade homogênea ou heterogênea
+k_ref = physical_data["k_ref"]
+k_homogeneo = physical_data["k_homogeneo"]
+
+# Solver do sistema linear
+solver = numerical_data["solver"]
+
+# Condições de contorno oeste e leste
+contorno_oeste = boundary_data["oeste"]
+contorno_leste = boundary_data["leste"]
+p_oeste = boundary_data["p_oeste"] * 1e5  # Pa
+p_leste = boundary_data["p_leste"] * 1e5  # Pa
 
 #Conversão da vazão de injeção para m³/s
 q_inj = well_data['q_inj'] * Bo / 86400  # m³/s
@@ -52,10 +68,13 @@ rx = dt / dx**2
 ry = dt / dy**2
 
 # Importa o campo de permeabilidade
-k = np.loadtxt(
-    Path(__file__).parent / numerical_data["arquivo_permeabilidade"],
-    delimiter=','
-)
+if k_homogeneo:
+    k = np.full((ny, nx), k_ref)
+else:
+    k = np.loadtxt(
+        Path(__file__).parent / numerical_data["arquivo_permeabilidade"],
+        delimiter=','
+    )
 
 # verifica dimensões
 assert k.shape == (ny, nx)
@@ -360,26 +379,43 @@ while tempo_atual < tempo:
 
     b[m] = Pold[m]
 
+    # Contorno oeste - pressão prescrita
+    if contorno_oeste == "pressao":
+        for i in range(ny):
+            m_b = i * nx
+            Cb = 2 * eta * rx * k[i, 0]  # dx/2 ate a parede
+            A[m_b, m_b] += Cb
+            b[m_b] += Cb * p_oeste
+
+    # Contorno leste - pressão prescrita
+    if contorno_leste == "pressao":
+        for i in range(ny):
+            m_b = i * nx + (nx - 1)
+            Cb = 2 * eta * rx * k[i, nx - 1]
+            A[m_b, m_b] += Cb
+            b[m_b] += Cb * p_leste
+
     # Poço produtos Central - Modelo de Peaceman
-    i = well_data['i']
-    j = well_data['j']
-    m = i * nx + j
+    if produtor_ativo:
+        i = well_data['i']
+        j = well_data['j']
+        m = i * nx + j
 
-    # Permeabilidade
-    kp = k[i,j]
+        # Permeabilidade
+        kp = k[i,j]
 
-    # Raio equivalente de Peaceman
-    re = 0.208 * dx
+        # Raio equivalente de Peaceman
+        re = 0.208 * dx
 
-    # indice de produtividade
-    WI = (2 * np.pi * kp * h) / (mu * np.log(re/rw))
+        # indice de produtividade
+        WI = (2 * np.pi * kp * h) / (mu * np.log(re/rw))
 
-    # Coeficiente do poço na equação implícita
-    Cw = dt * WI / (phi * ct * dx * dy * h)
+        # Coeficiente do poço na equação implícita
+        Cw = dt * WI / (phi * ct * dx * dy * h)
 
-    # Modificação na matriz e no vetor
-    A[m,m] += Cw
-    b[m] += Cw * pw
+        # Modificação na matriz e no vetor
+        A[m,m] += Cw
+        b[m] += Cw * pw
 
     # Poço injetor - vazao prescrita
     if injetor_ativo:
@@ -387,10 +423,16 @@ while tempo_atual < tempo:
         b[m_inj] += dt * q_inj / (phi * ct * dx * dy * h)
 
     # Resolução do sistema linear
-    Pnew = Gauss_Seidel(A, b, Pold, tolerancia, max_iter)
+    if solver == "direto":
+        Pnew = np.linalg.solve(A, b)
+    else:
+        Pnew = Gauss_Seidel(A, b, Pold, tolerancia, max_iter)
 
     # Vazão de produção pelo modelo de Peaceman
-    q_res = WI * (Pnew[m] - pw)  # m³/s no reservatório
+    if produtor_ativo:
+        q_res = WI * (Pnew[m] - pw)  # m³/s no reservatório
+    else:
+        q_res = 0
     q_std = q_res / Bo   # m³ std/s
 
     # Produção acumulada
