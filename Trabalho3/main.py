@@ -2,6 +2,7 @@ import copy
 import runpy
 import sys
 import time
+import warnings
 from pathlib import Path
 
 import matplotlib
@@ -13,6 +14,7 @@ RODAR_VERIFICACAO = True
 
 if not MOSTRAR_GRAFICOS:
     matplotlib.use("Agg")
+    warnings.filterwarnings("ignore", message=".*non-interactive.*")
 
 import matplotlib.pyplot as plt
 

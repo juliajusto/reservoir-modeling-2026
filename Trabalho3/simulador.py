@@ -145,8 +145,7 @@ def Gauss_Seidel(A, b, x0, Eppara, maxit):
 # Inicio da simulação
 inicio = time.time()
 
-while tempo_atual < tempo:
-    passo += 1
+for passo in range(1, nt + 1):
 
     #zerar matriz e vetor a cada passo de tempo
     A.fill(0)

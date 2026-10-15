@@ -1,0 +1,22 @@
+# ============================================================
+# GUIA DE CASOS - o que mudar para rodar cada caso
+# ============================================================
+#
+# CASO 1 - Produtor central
+#   well_data:  'i' = ny // 2, 'j' = nx // 2, 'injetor_ativo' = False
+#   fault_data: 'ativa' = False
+#   case_data:  'tempo_horas' = 240, 'tempos_snapshot' = [24, 72, 144, 240]
+#
+# CASO 2 - Produtor central com falha selante
+#   well_data:  'i' = ny // 2, 'j' = nx // 2, 'injetor_ativo' = False
+#   fault_data: 'ativa' = True
+#   case_data:  'tempo_horas' = 240, 'tempos_snapshot' = [24, 72, 144, 240]
+#
+# CASO 3 - Five-spot (1/4): injetor e produtor em cantos opostos
+#   well_data:  'i' = ny - 1, 'j' = nx - 1, 'injetor_ativo' = True
+#               'i_inj' = 0, 'j_inj' = 0
+#   fault_data: 'ativa' = False
+#   case_data:  'tempo_horas' = 720, 'tempos_snapshot' = [72, 240, 480, 720]
+#
+# Obs.: rodar gerador_permeabilidade.py antes, se o CSV não existir.
+# ============================================================

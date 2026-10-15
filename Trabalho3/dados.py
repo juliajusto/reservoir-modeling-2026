@@ -1,36 +1,8 @@
-# ============================================================
-# GUIA DE CASOS - o que mudar para rodar cada caso
-# ============================================================
-#
-# CASO 1 - Produtor central
-#   well_data:     'i' = ny // 2, 'j' = nx // 2
-#                  'produtor_ativo' = True, 'injetor_ativo' = False
-#   fault_data:    'ativa' = False
-#   boundary_data: 'oeste' = 'fluxo_nulo', 'leste' = 'fluxo_nulo'
-#   case_data:     'tempo_horas' = 720, 'tempos_snapshot' = [72, 240, 480, 720]
-#
-# CASO 2 - Produtor central com falha selante
-#   igual ao caso 1, mas fault_data: 'ativa' = True
-#
-# CASO 3 - Five-spot (1/4): injetor e produtor em cantos opostos
-#   well_data:     'i' = ny - 1, 'j' = nx - 1
-#                  'produtor_ativo' = True, 'injetor_ativo' = True
-#                  'i_inj' = 0, 'j_inj' = 0
-#   fault_data:    'ativa' = False
-#   boundary_data: 'oeste' = 'fluxo_nulo', 'leste' = 'fluxo_nulo'
-#   case_data:     'tempo_horas' = 720, 'tempos_snapshot' = [72, 240, 480, 720]
-#
-# VERIFICAÇÃO 1D - comparação com a solução analítica (Fourier)
-#   physical_data: 'k_homogeneo' = True
-#   well_data:     'produtor_ativo' = False, 'injetor_ativo' = False
-#   fault_data:    'ativa' = False
-#   boundary_data: 'oeste' = 'pressao' (150 bar), 'leste' = 'pressao' (200 bar)
-#   case_data:     'tempo_horas' = 24, 'tempos_snapshot' = [1, 6, 12, 24]
-#   numerical_data: 'solver' = 'direto'
-#
-# Obs.: rodar gerador_permeabilidade.py antes, se o CSV não existir.
-# ============================================================
-
+# Casos (o main.py ja configura sozinho)
+# Caso 1: produtor no centro, sem falha, sem injetor
+# Caso 2: produtor no centro, com falha
+# Caso 3: five-spot, injetor em (0,0) e produtor em (ny-1, nx-1)
+# Verificacao: k homogeneo, sem pocos, pressao prescrita oeste/leste
 
 # ============================================================
 # DADOS DO CASO
@@ -66,9 +38,7 @@ physical_data = {
     "h": 4,                     # Espessura [m]
     "rw": 0.10,                 # Raio do poço [m]
 
-    # True = k_ref em todos os blocos (verificação)
-    # False = campo heterogêneo lido do CSV
-    "k_homogeneo": False,
+    "k_homogeneo": False,       # True = k_ref em todos os blocos
 
     "L": 1000,                  # [m]
     "Lx": 1000,                 # Comprimento em x [m]
@@ -86,14 +56,14 @@ numerical_data = {
     "ny": 21,
     "nt": 2000,
 
-    # Solver do sistema linear: "gauss_seidel" ou "direto"
+    # "gauss_seidel" ou "direto"
     "solver": "gauss_seidel",
 
     # Gauss-Seidel
     "tolerancia": 1e-6,
     "max_iter": 10000,
 
-    # Solução analítica (número de termos da série de Fourier)
+    # Termos da serie de Fourier
     "N_fourier": 200,
 
     # Gerador de permeabilidade
@@ -118,17 +88,17 @@ fault_data = {
 
 
 # ============================================================
-# CONDIÇÕES DE CONTORNO (bordas oeste e leste)
+# CONDIÇÕES DE CONTORNO
 # ============================================================
 
 boundary_data = {
 
-    # "fluxo_nulo" = fronteira selada | "pressao" = pressão prescrita
+    # "fluxo_nulo" ou "pressao"
     "oeste": "fluxo_nulo",
-    "p_oeste": 150,             # Pressão na borda oeste [bar] (se "pressao")
+    "p_oeste": 150,             # [bar]
 
     "leste": "fluxo_nulo",
-    "p_leste": 200              # Pressão na borda leste [bar] (se "pressao")
+    "p_leste": 200              # [bar]
 }
 
 
@@ -140,7 +110,7 @@ well_data = {
 
     'i': numerical_data['ny'] //  2,  # Índice da linha do poço
     'j': numerical_data['nx'] // 2,  # Índice da coluna do poço
-    'produtor_ativo': True,          # False = sem produtor (verificação)
+    'produtor_ativo': True,
 
     'i_inj': 0,  # Índice da linha do poço injetor
     'j_inj': 0,   # Índice da coluna do poço injetor

@@ -11,7 +11,7 @@ k = physical_data["k_ref"]
 phi = physical_data["phi"]
 L = physical_data["Lx"]
 
-# Dados (pressão prescrita nas bordas oeste e leste)
+# Dados
 Po = case_data["Po"]
 pe = boundary_data["p_leste"]
 pw = boundary_data["p_oeste"]
@@ -75,10 +75,7 @@ def pressao_prescrita(x, t):
     return permanente + transiente
 
 
-# ============================================================
-# GRÁFICOS (só rodam quando este arquivo é executado direto,
-# não quando ele é importado pelo verificacao.py)
-# ============================================================
+# inicio dos graficos
 
 if __name__ == "__main__":
 
