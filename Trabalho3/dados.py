@@ -93,12 +93,16 @@ fault_data = {
 
 boundary_data = {
 
-    # "fluxo_nulo" ou "pressao"
+    # "fluxo_nulo", "pressao" ou "fluxo"
     "oeste": "fluxo_nulo",
     "p_oeste": 150,             # [bar]
 
     "leste": "fluxo_nulo",
-    "p_leste": 200              # [bar]
+    "p_leste": 200,             # [bar]
+
+    "q_oeste": 0, #m3 std/dia; positivo entra
+    "q_leste": 0 #m3 std/dia; positivo entr
+
 }
 
 

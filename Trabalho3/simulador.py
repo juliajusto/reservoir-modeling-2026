@@ -43,6 +43,8 @@ contorno_oeste = boundary_data["oeste"]
 contorno_leste = boundary_data["leste"]
 p_oeste = boundary_data["p_oeste"] * 1e5  # Pa
 p_leste = boundary_data["p_leste"] * 1e5  # Pa
+q_oeste = boundary_data["q_oeste"] 
+q_leste = boundary_data["q_leste"] 
 
 #Conversão da vazão de injeção para m³/s
 q_inj = well_data['q_inj'] * Bo / 86400  # m³/s
@@ -52,6 +54,10 @@ nx = numerical_data["nx"]
 ny = numerical_data["ny"]
 N = nx * ny
 nt = numerical_data["nt"]
+
+#vazao das bordas por bloco (m3/s no reservaotiro
+q_oeste = q_oeste * Bo / 86400 / ny
+q_leste = q_leste * Bo / 86400 / ny
 
 # Dimensão do reservatório
 Lx = physical_data["Lx"]
@@ -93,6 +99,7 @@ vazoes = []
 producoes_acumuladas = []
 pressoes_snapshot = []
 horas_snapshot = []
+pwf_injetor = []
 
 Np = 0 # Produção acumulada em m³ std
 
@@ -394,6 +401,23 @@ for passo in range(1, nt + 1):
             A[m_b, m_b] += Cb
             b[m_b] += Cb * p_leste
 
+    # Contorno oeste - fluxo prescrito
+    if contorno_oeste == "fluxo":
+        for i in range(ny):
+            m_b = i * nx
+            b[m_b] += (
+                dt * q_oeste
+                / (phi * ct * dx * dy * h)
+            )
+    # Contorno leste - fluxo prescrito
+    if contorno_leste == "fluxo":
+        for i in range(ny):
+            m_b = i * nx + (nx - 1)
+            b[m_b] += (
+                dt * q_leste
+                / (phi * ct * dx * dy * h)
+            )
+
     # Poço produtos Central - Modelo de Peaceman
     if produtor_ativo:
         i = well_data['i']
@@ -416,10 +440,27 @@ for passo in range(1, nt + 1):
         A[m,m] += Cw
         b[m] += Cw * pw
 
-    # Poço injetor - vazao prescrita
+    # Poço injetor - vazão prescrita
     if injetor_ativo:
         m_inj = i_inj * nx + j_inj
-        b[m_inj] += dt * q_inj / (phi * ct * dx * dy * h)
+
+        # Permeabilidade do bloco do injetor
+        k_inj = k[i_inj, j_inj]
+
+        # Raio equivalente de Peaceman
+        re_inj = 0.208 * dx
+
+        # Índice de produtividade do injetor
+        WI_inj = (
+            2 * np.pi * k_inj * h
+            / (mu * np.log(re_inj / rw))
+        )
+
+        # Termo-fonte da vazão de injeção
+        b[m_inj] += (
+            dt * q_inj
+            / (phi * ct * dx * dy * h)
+        )
 
     # Resolução do sistema linear
     if solver == "direto":
@@ -433,6 +474,13 @@ for passo in range(1, nt + 1):
     else:
         q_res = 0
     q_std = q_res / Bo   # m³ std/s
+
+    # Pressão de fundo do injetor pelo modelo de Peaceman
+    if injetor_ativo:
+        pwf_inj = Pnew[m_inj] + q_inj / WI_inj
+        pwf_injetor.append(pwf_inj / 1e5)  # Pa -> bar
+    else:
+        pwf_injetor.append(np.nan)
 
     # Produção acumulada
     Np += q_std * dt
@@ -459,63 +507,83 @@ for passo in range(1, nt + 1):
 
 fim = time.time()
 
-# Velocidade de Darcy nas faces em x
-ux = np.zeros((ny, nx - 1))
+# Campo de velocidades
+def calcular_velocidades(P_new):
 
-for i in range(ny):
-    for j in range(nx - 1):
-        k_face = 2 * k[i,j] * k[i,j+1] / (k[i,j] + k[i,j+1])
+    # Velocidade de Darcy nas faces em x
+    ux = np.zeros((ny, nx - 1))
 
-        ux[i,j] = -(k_face / mu) * (
-            P_new[i,j+1] - P_new[i,j]
-        ) / dx
+    for i in range(ny):
+        for j in range(nx - 1):
+            k_face = 2 * k[i,j] * k[i,j+1] / (k[i,j] + k[i,j+1])
 
-
-#velocidade de Darcy nas faces em y
-uy = np.zeros((ny - 1, nx))
-
-for i in range(ny - 1):
-    for j in range(nx):
-        k_face = 2 * k[i,j] * k[i+1,j] / (k[i,j] + k[i+1,j])
-
-        uy[i,j] = -(k_face / mu) * (
-            P_new[i+1,j] - P_new[i,j]
-        ) / dy
+            ux[i,j] = -(k_face / mu) * (
+                P_new[i,j+1] - P_new[i,j]
+            ) / dx
 
 
-# Falha selante: velocidade nula nas faces da falha
-if falha_ativa:
-    for i in range(inicio_falha, fim_falha + 1):
-        ux[i, coluna_falha] = 0
+    #velocidade de Darcy nas faces em y
+    uy = np.zeros((ny - 1, nx))
+
+    for i in range(ny - 1):
+        for j in range(nx):
+            k_face = 2 * k[i,j] * k[i+1,j] / (k[i,j] + k[i+1,j])
+
+            uy[i,j] = -(k_face / mu) * (
+                P_new[i+1,j] - P_new[i,j]
+            ) / dy
 
 
-# Velocidade em x no centro dos blocos
-ux_c = np.zeros((ny, nx))
-
-for i in range(ny):
-    for j in range(nx):
-        oeste = ux[i, j-1] if j > 0 else 0
-        leste = ux[i, j] if j < nx - 1 else 0
-
-        ux_c[i, j] = (oeste + leste) / 2
+    # Falha selante: velocidade nula nas faces da falha
+    if falha_ativa:
+        for i in range(inicio_falha, fim_falha + 1):
+            ux[i, coluna_falha] = 0
 
 
-# Velocidade em y no centro dos blocos
-uy_c = np.zeros((ny, nx))
+    # Velocidade em x no centro dos blocos
+    ux_c = np.zeros((ny, nx))
 
-for i in range(ny):
-    for j in range(nx):
-        baixo = uy[i-1, j] if i > 0 else 0
-        cima = uy[i, j] if i < ny - 1 else 0
+    for i in range(ny):
+        for j in range(nx):
+            oeste = ux[i, j-1] if j > 0 else 0
+            leste = ux[i, j] if j < nx - 1 else 0
 
-        uy_c[i, j] = (baixo + cima) / 2
+            ux_c[i, j] = (oeste + leste) / 2
 
 
-# Módulo da velocidade
-u_mod = np.sqrt(ux_c**2 + uy_c**2)
+    # Velocidade em y no centro dos blocos
+    uy_c = np.zeros((ny, nx))
+
+    for i in range(ny):
+        for j in range(nx):
+            baixo = uy[i-1, j] if i > 0 else 0
+            cima = uy[i, j] if i < ny - 1 else 0
+
+            uy_c[i, j] = (baixo + cima) / 2
+
+
+    # Módulo da velocidade
+    u_mod = np.sqrt(ux_c**2 + uy_c**2)
+
+    return ux_c, uy_c, u_mod
+
+
+# Velocidade no tempo final
+ux_c, uy_c, u_mod = calcular_velocidades(P_new)
+
+# Velocidade nos tempos dos snapshots
+velocidades_snapshot = []
+for P in pressoes_snapshot:
+    velocidades_snapshot.append(calcular_velocidades(P))
 
 print(f"Tempo de execução: {fim - inicio:.2f} segundos")
 print(f"Pressão final no poço: {Pnew[m]/1e5:.2f} bar")
 print(f"Vazão final: {vazoes[-1]:.4f} m³ std/dia")
 print(f"Produção acumulada: {Np:.4f} m³ std")
 print(f"Snapshots salvos: {horas_snapshot}")
+
+if injetor_ativo:
+    print(
+        f"Pressão de fundo final do injetor: "
+        f"{pwf_injetor[-1]:.2f} bar"
+    )
