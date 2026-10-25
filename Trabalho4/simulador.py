@@ -69,9 +69,12 @@ dy = Ly / ny
 dt = tempo / nt
 
 # Cálculos Iniciais
-eta = 1 / (phi * mu * ct)
-rx = dt / dx**2
-ry = dt / dy**2
+V = dx * dy * h  # Volume do bloco [m³]
+Ax = dy * h  # Área da face em x [m²]
+Ay = dx * h  # Área da face em y [m²]
+Az = dx * dy  # Área da face em z [m²]
+
+acumulacao = (phi * ct* V) / dt
 
 # Importa o campo de permeabilidade
 if k_homogeneo:
@@ -149,6 +152,26 @@ def Gauss_Seidel(A, b, x0, Eppara, maxit):
 
     return x
 
+#permeabilidade harmônica nas fases em x 
+k_harm_x = (
+    2*k[:, :-1] * k[:,1:] 
+    / (k[:, :-1] + k[:, 1:])
+)
+
+#permeabilidade harmônica nas fases em y
+k_harm_y = (
+    2*k[:-1, :] * k[1:, :] 
+    / (k[:-1, :] + k[1:, :])
+)
+
+#transmissibilidades 
+Tx = k_harm_x * Ax / (mu * dx)
+Ty = k_harm_y * Ay / (mu * dy)
+
+#falha selante: transmissibilidade hulas nas faces da falha 
+if falha_ativa:
+    Tx[inicio_falha:fim_falha + 1, coluna_falha] = 0.0
+
 # Inicio da simulação
 inicio = time.time()
 
@@ -158,288 +181,85 @@ for passo in range(1, nt + 1):
     A.fill(0)
     b.fill(0)
 
-    # Parte central
-    for i in range(1, ny-1):
-        for m in range(i*nx+1, (i+1)*nx-1):
+    #pt 1: acumulação
+    A[np.arange(N), np.arange(N)] = acumulacao
+    b[:] = acumulacao * Pold
 
-            # Índice da coluna
-            j = m % nx
+    #pt 2: Faces em x 
+    for i in range(ny):
+        for j in range(nx - 1):
+            m1 = i * nx + j
+            m2 = m1 + 1
+            T = Tx[i, j]
 
-            # Permeabilidades equivalentes nas faces
-            kE = 2*k[i,j]*k[i,j+1] / (k[i,j]+k[i,j+1])
-            kW = 2*k[i,j]*k[i,j-1] / (k[i,j]+k[i,j-1])
-            kN = 2*k[i,j]*k[i-1,j] / (k[i,j]+k[i-1,j])
-            kS = 2*k[i,j]*k[i+1,j] / (k[i,j]+k[i+1,j])
+            A[m1, m1] += T
+            A[m2, m2] += T
+            A[m1, m2] -= T
+            A[m2, m1] -= T
 
-            if falha_ativa and inicio_falha <= i <= fim_falha:
-              if j == coluna_falha:
-                kE = 0
-              if j == coluna_falha + 1:
-                kW = 0
+    #pt 3: Faces em y
+    for i in range(ny - 1):
+        for j in range(nx):
+            m1 = i * nx + j
+            m2 = m1 + nx
+            T = Ty[i, j]
 
-            # Coeficientes
-            Ae = -eta * rx * kE
-            Aw = -eta * rx * kW
-            An = -eta * ry * kN
-            As = -eta * ry * kS
-            Ap = 1 - Ae - Aw - An - As
+            A[m1, m1] += T
+            A[m2, m2] += T
+            A[m1, m2] -= T
+            A[m2, m1] -= T
+           
 
-            # Matriz
-            A[m,m] = Ap
-            A[m,m-1] = Aw
-            A[m,m+1] = Ae
-            A[m,m-nx] = An
-            A[m,m+nx] = As
-
-            b[m] = Pold[m]
-
-    # Fronteira norte - fluxo nulo
-    for m in range(1, nx-1):
-        i = 0
-        j = m % nx
-
-        # Permeabilidades equivalentes
-        kE = 2*k[i,j]*k[i,j+1] / (k[i,j]+k[i,j+1])
-        kW = 2*k[i,j]*k[i,j-1] / (k[i,j]+k[i,j-1])
-        kS = 2*k[i,j]*k[i+1,j] / (k[i,j]+k[i+1,j])
-
-        # Coeficientes
-        Ae = -eta * rx * kE
-        Aw = -eta * rx * kW
-        An = 0
-        As = -eta * ry * kS
-        Ap = 1 - Ae - Aw - An - As
-
-        # Matriz
-        A[m,m] = Ap
-        A[m,m-1] = Aw
-        A[m,m+1] = Ae
-        A[m,m+nx] = As
-
-        b[m] = Pold[m]
-
-    # Fronteira sul - fluxo nulo
-    for m in range((ny-1)*nx+1, N-1):
-        i = ny-1
-        j = m % nx
-
-        # Permeabilidades equivalentes nas faces
-        kE = 2*k[i,j]*k[i,j+1] / (k[i,j]+k[i,j+1])
-        kW = 2*k[i,j]*k[i,j-1] / (k[i,j]+k[i,j-1])
-        kN = 2*k[i,j]*k[i-1,j] / (k[i,j]+k[i-1,j])
-
-        # Coeficientes
-        Ae = -eta * rx * kE
-        Aw = -eta * rx * kW
-        An = -eta * ry * kN
-        As = 0
-        Ap = 1 - Ae - Aw - An - As
-
-        # Matriz
-        A[m,m] = Ap
-        A[m,m-1] = Aw
-        A[m,m+1] = Ae
-        A[m,m-nx] = An
-
-        b[m] = Pold[m]
-
-    # Fronteira oeste - fluxo nulo
-    for i in range(1, ny-1):
-        m = i * nx
-        j = 0
-
-        # Permeabilidades equivalentes
-        kE = 2*k[i,j]*k[i,j+1] / (k[i,j]+k[i,j+1])
-        kN = 2*k[i,j]*k[i-1,j] / (k[i,j]+k[i-1,j])
-        kS = 2*k[i,j]*k[i+1,j] / (k[i,j]+k[i+1,j])
-
-        # Coeficientes
-        Ae = -eta * rx * kE
-        Aw = 0
-        An = -eta * ry * kN
-        As = -eta * ry * kS
-        Ap = 1 - Ae - Aw - An - As
-
-        # Matriz
-        A[m,m] = Ap
-        A[m,m+1] = Ae
-        A[m,m-nx] = An
-        A[m,m+nx] = As
-
-        b[m] = Pold[m]
-
-    # Fronteira leste - fluxo nulo
-    for i in range(1, ny-1):
-        m = i * nx + (nx-1)
-        j = nx-1
-
-        # Permeabilidades equivalentes
-        kW = 2*k[i,j]*k[i,j-1] / (k[i,j]+k[i,j-1])
-        kN = 2*k[i,j]*k[i-1,j] / (k[i,j]+k[i-1,j])
-        kS = 2*k[i,j]*k[i+1,j] / (k[i,j]+k[i+1,j])
-
-        # Coeficientes
-        Ae = 0
-        Aw = -eta * rx * kW
-        An = -eta * ry * kN
-        As = -eta * ry * kS
-        Ap = 1 - Ae - Aw - An - As
-
-        # Matriz
-        A[m,m] = Ap
-        A[m,m-1] = Aw
-        A[m,m-nx] = An
-        A[m,m+nx] = As
-
-        b[m] = Pold[m]
-
-    # Canto Noroeste
-    i = 0
-    j = 0
-    m = 0
-
-    # Permeabilidades equivalentes
-    kE = 2*k[i,j]*k[i,j+1] / (k[i,j]+k[i,j+1])
-    kS = 2*k[i,j]*k[i+1,j] / (k[i,j]+k[i+1,j])
-
-    # Coeficientes
-    Ae = -eta * rx * kE
-    Aw = 0
-    An = 0
-    As = -eta * ry * kS
-    Ap = 1 - Ae - Aw - An - As
-
-    # Matriz
-    A[m,m] = Ap
-    A[m,m+1] = Ae
-    A[m,m+nx] = As
-
-    b[m] = Pold[m]
-
-    # Canto Nordeste
-    i = 0
-    j = nx-1
-    m = nx-1
-
-    # Permeabilidades equivalentes
-    kW = 2*k[i,j]*k[i,j-1] / (k[i,j]+k[i,j-1])
-    kS = 2*k[i,j]*k[i+1,j] / (k[i,j]+k[i+1,j])
-
-    # Coeficientes
-    Ae = 0
-    Aw = -eta * rx * kW
-    An = 0
-    As = -eta * ry * kS
-    Ap = 1 - Ae - Aw - An - As
-
-    # Matriz
-    A[m,m] = Ap
-    A[m,m-1] = Aw
-    A[m,m+nx] = As
-
-    b[m] = Pold[m]
-
-    # Canto Sudoeste
-    i = ny-1
-    j = 0
-    m = (ny-1)*nx
-
-    # Permeabilidades equivalentes
-    kE = 2*k[i,j]*k[i,j+1] / (k[i,j]+k[i,j+1])
-    kN = 2*k[i,j]*k[i-1,j] / (k[i,j]+k[i-1,j])
-
-    # Coeficientes
-    Ae = -eta * rx * kE
-    Aw = 0
-    An = -eta * ry * kN
-    As = 0
-    Ap = 1 - Ae - Aw - An - As
-
-    # Matriz
-    A[m,m] = Ap
-    A[m,m+1] = Ae
-    A[m,m-nx] = An
-
-    b[m] = Pold[m]
-
-    # Canto Sudeste
-    i = ny-1
-    j = nx-1
-    m = N-1
-
-    # Permeabilidades equivalentes
-    kW = 2*k[i,j]*k[i,j-1] / (k[i,j]+k[i,j-1])
-    kN = 2*k[i,j]*k[i-1,j] / (k[i,j]+k[i-1,j])
-
-    # Coeficientes
-    Ae = 0
-    Aw = -eta * rx * kW
-    An = -eta * ry * kN
-    As = 0
-    Ap = 1 - Ae - Aw - An - As
-
-    # Matriz
-    A[m,m] = Ap
-    A[m,m-1] = Aw
-    A[m,m-nx] = An
-
-    b[m] = Pold[m]
 
     # Contorno oeste - pressão prescrita
     if contorno_oeste == "pressao":
         for i in range(ny):
             m_b = i * nx
-            Cb = 2 * eta * rx * k[i, 0]  # dx/2 ate a parede
-            A[m_b, m_b] += Cb
-            b[m_b] += Cb * p_oeste
+            Tb = (k[i, 0] * Ax) / (mu * dx/2)  # dx/2 ate a parede
+            A[m_b, m_b] += Tb
+            b[m_b] += Tb * p_oeste
 
     # Contorno leste - pressão prescrita
     if contorno_leste == "pressao":
         for i in range(ny):
             m_b = i * nx + (nx - 1)
-            Cb = 2 * eta * rx * k[i, nx - 1]
-            A[m_b, m_b] += Cb
-            b[m_b] += Cb * p_leste
+            Tb = (k[i, nx - 1] * Ax) / (mu * dx/2)  # dx/2 ate a parede
+            A[m_b, m_b] += Tb
+            b[m_b] += Tb * p_leste
 
+   
     # Contorno oeste - fluxo prescrito
     if contorno_oeste == "fluxo":
         for i in range(ny):
             m_b = i * nx
-            b[m_b] += (
-                dt * q_oeste
-                / (phi * ct * dx * dy * h)
-            )
+            b[m_b] += q_oeste
+
+   
     # Contorno leste - fluxo prescrito
     if contorno_leste == "fluxo":
         for i in range(ny):
             m_b = i * nx + (nx - 1)
-            b[m_b] += (
-                dt * q_leste
-                / (phi * ct * dx * dy * h)
-            )
+            b[m_b] += q_leste
 
-    # Poço produtos Central - Modelo de Peaceman
+
+   
+    # Poço produtor central - Modelo de Peaceman
     if produtor_ativo:
         i = well_data['i']
         j = well_data['j']
         m = i * nx + j
 
-        # Permeabilidade
-        kp = k[i,j]
-
-        # Raio equivalente de Peaceman
+        kp = k[i, j]
         re = 0.208 * dx
 
-        # indice de produtividade
-        WI = (2 * np.pi * kp * h) / (mu * np.log(re/rw))
+        WI = (2 * np.pi * kp * h) / (mu * np.log(re / rw))
 
-        # Coeficiente do poço na equação implícita
-        Cw = dt * WI / (phi * ct * dx * dy * h)
+        A[m, m] += WI
+        b[m] += WI * pw
 
-        # Modificação na matriz e no vetor
-        A[m,m] += Cw
-        b[m] += Cw * pw
 
+   
+    
     # Poço injetor - vazão prescrita
     if injetor_ativo:
         m_inj = i_inj * nx + j_inj
@@ -457,10 +277,8 @@ for passo in range(1, nt + 1):
         )
 
         # Termo-fonte da vazão de injeção
-        b[m_inj] += (
-            dt * q_inj
-            / (phi * ct * dx * dy * h)
-        )
+        b[m_inj] += q_inj
+
 
     # Resolução do sistema linear
     if solver == "direto":
@@ -507,65 +325,38 @@ for passo in range(1, nt + 1):
 
 fim = time.time()
 
-# Campo de velocidades
+
 def calcular_velocidades(P_new):
 
     # Velocidade de Darcy nas faces em x
-    ux = np.zeros((ny, nx - 1))
+    F_x = Tx * (P_new[:, :-1] - P_new[:, 1:])
+    ux = F_x / Ax
 
-    for i in range(ny):
-        for j in range(nx - 1):
-            k_face = 2 * k[i,j] * k[i,j+1] / (k[i,j] + k[i,j+1])
+    # Velocidade de Darcy nas faces em y
+    F_y = Ty * (P_new[:-1, :] - P_new[1:, :])
+    uy = F_y / Ay
 
-            ux[i,j] = -(k_face / mu) * (
-                P_new[i,j+1] - P_new[i,j]
-            ) / dx
-
-
-    #velocidade de Darcy nas faces em y
-    uy = np.zeros((ny - 1, nx))
-
-    for i in range(ny - 1):
-        for j in range(nx):
-            k_face = 2 * k[i,j] * k[i+1,j] / (k[i,j] + k[i+1,j])
-
-            uy[i,j] = -(k_face / mu) * (
-                P_new[i+1,j] - P_new[i,j]
-            ) / dy
-
-
-    # Falha selante: velocidade nula nas faces da falha
-    if falha_ativa:
-        for i in range(inicio_falha, fim_falha + 1):
-            ux[i, coluna_falha] = 0
-
-
-    # Velocidade em x no centro dos blocos
+    # Velocidade de Darcy no centro dos blocos em x
     ux_c = np.zeros((ny, nx))
 
-    for i in range(ny):
-        for j in range(nx):
-            oeste = ux[i, j-1] if j > 0 else 0
-            leste = ux[i, j] if j < nx - 1 else 0
+    for j in range(nx):
+        oeste = ux[:, j-1] if j > 0 else 0
+        leste = ux[:, j] if j < nx - 1 else 0
+        ux_c[:, j] = (oeste + leste) / 2
 
-            ux_c[i, j] = (oeste + leste) / 2
-
-
-    # Velocidade em y no centro dos blocos
+    # Velocidade de Darcy no centro dos blocos em y
     uy_c = np.zeros((ny, nx))
 
     for i in range(ny):
-        for j in range(nx):
-            baixo = uy[i-1, j] if i > 0 else 0
-            cima = uy[i, j] if i < ny - 1 else 0
-
-            uy_c[i, j] = (baixo + cima) / 2
-
+        norte = uy[i-1, :] if i > 0 else 0
+        sul = uy[i, :] if i < ny - 1 else 0
+        uy_c[i, :] = (norte + sul) / 2
 
     # Módulo da velocidade
     u_mod = np.sqrt(ux_c**2 + uy_c**2)
 
     return ux_c, uy_c, u_mod
+
 
 
 # Velocidade no tempo final

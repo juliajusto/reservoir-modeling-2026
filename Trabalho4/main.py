@@ -10,7 +10,7 @@ import matplotlib
 # Opções
 MOSTRAR_GRAFICOS = False   # False = so salva os png
 RODAR_CASOS = ["produtor", "falha", "fivespot"]
-RODAR_VERIFICACAO = True
+RODAR_COMPARACAO = True   # compara MDF (Trabalho3) x MVF
 
 if not MOSTRAR_GRAFICOS:
     matplotlib.use("Agg")
@@ -103,14 +103,15 @@ for caso in RODAR_CASOS:
     restaurar_dados()
     configurar_caso(caso)
     rodar_script("graficos.py")
+    
+# Comparacao MDF x MVF
+if RODAR_COMPARACAO:
 
-# Verificacao com o analitico
-if RODAR_VERIFICACAO:
-
-    print("\nVerificacao")
+    print("\nComparacao MDF x MVF")
 
     restaurar_dados()
-    rodar_script("verificacao.py")
+    rodar_script("comparacao.py")
+
 
 restaurar_dados()
 print(f"\nTempo total: {time.time() - inicio_total:.1f} segundos")
